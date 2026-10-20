@@ -1,7 +1,7 @@
 # url-guard (Python)
 
 SSRF guard for outbound URLs. This is the Python twin of the
-[url-guard npm package](https://www.npmjs.com/package/url-guard): identical
+[@mpointer/url-guard npm package](https://www.npmjs.com/package/@mpointer/url-guard): identical
 IP-literal grammar, identical classification tables, identical URL rules,
 shared vectors decoded by both suites in CI. Zero dependencies.
 

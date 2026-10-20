@@ -1,5 +1,5 @@
 {
-  "name": "url-guard",
+  "name": "@mpointer/url-guard",
   "version": "0.1.0",
   "description": "SSRF guard for outbound URLs: canonical IP-literal parsing in every encoding, private/metadata/link-local classification, DNS-resolved validation, and a fetch that re-validates every redirect. Zero dependencies.",
   "license": "MIT",

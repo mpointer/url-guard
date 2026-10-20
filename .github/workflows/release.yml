@@ -35,9 +35,9 @@ jobs:
         id: npm_exists
         run: |
           PKG=$(node -p "require('./package.json').version")
-          if npm view "url-guard@$PKG" version >/dev/null 2>&1; then
+          if npm view "@mpointer/url-guard@$PKG" version >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "url-guard@$PKG is already published; skipping"
+            echo "@mpointer/url-guard@$PKG is already published; skipping"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi

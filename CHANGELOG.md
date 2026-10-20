@@ -1,6 +1,6 @@
 # Changelog
 
-Both packages share one version number and one `v*` tag.
+Both packages share one version number and one `v*` tag. The npm package is `@mpointer/url-guard` (npm rejects `url-guard` as too close to an existing `urlguard`); the PyPI project is `url-guard`.
 
 ## 0.1.0 (2026-10-20)
 

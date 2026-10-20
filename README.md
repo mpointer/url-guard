@@ -3,9 +3,11 @@
 SSRF guard for outbound URLs, extracted from two production applications. Canonical IP-literal parsing in every encoding, classification against the private, metadata, link-local, ULA and CGNAT ranges, DNS-resolved validation, an HTTPS rule, a host allow-list, and (in TypeScript) a `fetch` that re-validates every redirect. Zero dependencies. The Python package shares the grammar, the tables and the test vectors.
 
 ```
-npm install url-guard
+npm install @mpointer/url-guard
 pip install url-guard
 ```
+
+The npm package is scoped because npm treats `url-guard` and an existing `urlguard` as the same name. The PyPI project, the repository and the Python module are plain `url-guard` / `url_guard`.
 
 ## What problem this solves
 
@@ -31,7 +33,7 @@ This library was written after a security scan found three different string-matc
 ## Quick start
 
 ```ts
-import { assertPublicUrl, assertPublicUrlResolved, safeFetch, UnsafeUrlError } from "url-guard";
+import { assertPublicUrl, assertPublicUrlResolved, safeFetch, UnsafeUrlError } from "@mpointer/url-guard";
 
 // Synchronous, structural: scheme, blocked names, IP literals in every encoding.
 const base = assertPublicUrl(settings.llmBaseUrl);

@@ -211,10 +211,15 @@ def _in_v4_range(b: Sequence[int], prefix: Sequence[int], mask_bits: int) -> boo
     return True
 
 
-# Ranges blocked no matter what: metadata and link-local.
+# Ranges blocked no matter what: metadata, link-local, multicast and reserved.
+# Nothing self-hosted lives on a multicast or a reserved address, so
+# allow_private has no business opening them (the IPv6 multicast block was
+# always unconditional; this makes IPv4 match).
 V4_ALWAYS_BLOCKED: tuple[tuple[tuple[int, ...], int, str], ...] = (
     ((169, 254, 0, 0), 16, "link-local (includes the cloud metadata endpoint)"),
     ((100, 100, 100, 200), 32, "Alibaba Cloud metadata endpoint"),
+    ((224, 0, 0, 0), 4, "multicast 224.0.0.0/4"),
+    ((240, 0, 0, 0), 4, "reserved 240.0.0.0/4 (includes broadcast)"),
 )
 
 # Ranges blocked unless allow_private: genuinely internal but sometimes real.
@@ -231,8 +236,6 @@ V4_PRIVATE: tuple[tuple[tuple[int, ...], int, str], ...] = (
     ((198, 18, 0, 0), 15, "benchmarking 198.18.0.0/15"),
     ((198, 51, 100, 0), 24, "TEST-NET-2"),
     ((203, 0, 113, 0), 24, "TEST-NET-3"),
-    ((224, 0, 0, 0), 4, "multicast 224.0.0.0/4"),
-    ((240, 0, 0, 0), 4, "reserved 240.0.0.0/4"),
 )
 
 

@@ -1,49 +1,207 @@
 {
   "comment": "Shared address vectors decoded by both the TypeScript and the Python suites. Every entry is a hostname as it appears in a URL (IPv6 without brackets).",
   "private": [
-    ["127.0.0.1", "loopback"],
-    ["127.255.255.254", "loopback, high end of 127/8"],
-    ["0.0.0.0", "this network"],
-    ["0", "short-form 0.0.0.0"],
-    ["10.0.0.5", "RFC1918 10/8"],
-    ["172.16.0.1", "RFC1918 172.16/12, low end"],
-    ["172.31.255.254", "RFC1918 172.16/12, high end"],
-    ["192.168.1.10", "RFC1918 192.168/16"],
-    ["169.254.169.254", "link-local / cloud metadata"],
-    ["169.254.0.1", "link-local"],
-    ["100.100.100.200", "Alibaba metadata"],
-    ["100.64.0.1", "CGNAT"],
-    ["2130706433", "decimal-encoded 127.0.0.1"],
-    ["0x7f000001", "hex-encoded 127.0.0.1"],
-    ["0177.0.0.1", "octal-encoded 127.0.0.1"],
-    ["127.1", "short-form 127.0.0.1"],
-    ["::1", "IPv6 loopback"],
-    ["fc00::1", "IPv6 ULA fc00::/7"],
-    ["fd00:ec2::254", "AWS IPv6 metadata"],
-    ["::169.254.169.254", "IPv4-compatible IPv6 link-local"],
-    ["64:ff9b::10.0.0.5", "NAT64-embedded RFC1918"],
-    ["fe80::1", "IPv6 link-local"],
-    ["::ffff:127.0.0.1", "IPv4-mapped IPv6 loopback"],
-    ["::ffff:10.0.0.5", "IPv4-mapped IPv6 RFC1918"],
-    ["::ffff:7f00:1", "IPv4-mapped IPv6 loopback, hextet form"],
-    ["::", "IPv6 unspecified"]
+    [
+      "127.0.0.1",
+      "loopback"
+    ],
+    [
+      "127.255.255.254",
+      "loopback, high end of 127/8"
+    ],
+    [
+      "0.0.0.0",
+      "this network"
+    ],
+    [
+      "0",
+      "short-form 0.0.0.0"
+    ],
+    [
+      "10.0.0.5",
+      "RFC1918 10/8"
+    ],
+    [
+      "172.16.0.1",
+      "RFC1918 172.16/12, low end"
+    ],
+    [
+      "172.31.255.254",
+      "RFC1918 172.16/12, high end"
+    ],
+    [
+      "192.168.1.10",
+      "RFC1918 192.168/16"
+    ],
+    [
+      "169.254.169.254",
+      "link-local / cloud metadata"
+    ],
+    [
+      "169.254.0.1",
+      "link-local"
+    ],
+    [
+      "100.100.100.200",
+      "Alibaba metadata"
+    ],
+    [
+      "100.64.0.1",
+      "CGNAT"
+    ],
+    [
+      "2130706433",
+      "decimal-encoded 127.0.0.1"
+    ],
+    [
+      "0x7f000001",
+      "hex-encoded 127.0.0.1"
+    ],
+    [
+      "0177.0.0.1",
+      "octal-encoded 127.0.0.1"
+    ],
+    [
+      "127.1",
+      "short-form 127.0.0.1"
+    ],
+    [
+      "::1",
+      "IPv6 loopback"
+    ],
+    [
+      "fc00::1",
+      "IPv6 ULA fc00::/7"
+    ],
+    [
+      "fd00:ec2::254",
+      "AWS IPv6 metadata"
+    ],
+    [
+      "::169.254.169.254",
+      "IPv4-compatible IPv6 link-local"
+    ],
+    [
+      "64:ff9b::10.0.0.5",
+      "NAT64-embedded RFC1918"
+    ],
+    [
+      "fe80::1",
+      "IPv6 link-local"
+    ],
+    [
+      "::ffff:127.0.0.1",
+      "IPv4-mapped IPv6 loopback"
+    ],
+    [
+      "::ffff:10.0.0.5",
+      "IPv4-mapped IPv6 RFC1918"
+    ],
+    [
+      "::ffff:7f00:1",
+      "IPv4-mapped IPv6 loopback, hextet form"
+    ],
+    [
+      "::",
+      "IPv6 unspecified"
+    ],
+    [
+      "224.0.0.1",
+      "IPv4 multicast"
+    ],
+    [
+      "240.0.0.1",
+      "reserved 240/4"
+    ]
   ],
-  "public": ["1.1.1.1", "8.8.8.8", "172.32.0.1", "100.63.255.255", "2606:4700::1111"],
+  "public": [
+    "1.1.1.1",
+    "8.8.8.8",
+    "172.32.0.1",
+    "100.63.255.255",
+    "2606:4700::1111"
+  ],
   "alwaysBlocked": [
-    ["169.254.169.254", "v4 link-local / IMDS"],
-    ["100.100.100.200", "Alibaba metadata"],
-    ["fe80::1", "IPv6 link-local"],
-    ["fd00:ec2::254", "AWS IPv6 IMDS inside fc00::/7"],
-    ["::ffff:169.254.169.254", "IPv4-mapped IMDS"],
-    ["::169.254.169.254", "IPv4-compatible IMDS"],
-    ["64:ff9b::169.254.169.254", "NAT64-embedded IMDS"]
+    [
+      "169.254.169.254",
+      "v4 link-local / IMDS"
+    ],
+    [
+      "100.100.100.200",
+      "Alibaba metadata"
+    ],
+    [
+      "fe80::1",
+      "IPv6 link-local"
+    ],
+    [
+      "fd00:ec2::254",
+      "AWS IPv6 IMDS inside fc00::/7"
+    ],
+    [
+      "::ffff:169.254.169.254",
+      "IPv4-mapped IMDS"
+    ],
+    [
+      "::169.254.169.254",
+      "IPv4-compatible IMDS"
+    ],
+    [
+      "64:ff9b::169.254.169.254",
+      "NAT64-embedded IMDS"
+    ],
+    [
+      "224.0.0.1",
+      "IPv4 multicast"
+    ],
+    [
+      "255.255.255.255",
+      "broadcast, in reserved 240/4"
+    ],
+    [
+      "ff02::1",
+      "IPv6 multicast"
+    ]
   ],
-  "privateAllowed": ["10.0.0.5", "127.0.0.1", "::ffff:127.0.0.1", "fc00::1", "::1"],
-  "loopbackForms": ["127.0.0.1", "2130706433", "0x7f000001", "0177.0.0.1", "127.1", "127.0.1"],
-  "notIp": ["api.openai.com", "999.1.1.1", ""],
+  "privateAllowed": [
+    "10.0.0.5",
+    "127.0.0.1",
+    "::ffff:127.0.0.1",
+    "fc00::1",
+    "::1"
+  ],
+  "loopbackForms": [
+    "127.0.0.1",
+    "2130706433",
+    "0x7f000001",
+    "0177.0.0.1",
+    "127.1",
+    "127.0.1"
+  ],
+  "notIp": [
+    "api.openai.com",
+    "999.1.1.1",
+    ""
+  ],
   "urls": {
-    "accept": ["https://api.openai.com", "https://us-south.ml.cloud.ibm.com/v1", "http://1.1.1.1/x"],
-    "rejectScheme": ["file:///etc/passwd", "gopher://example.com", "ftp://example.com"],
-    "rejectHost": ["localhost", "localhost.", "LOCALHOST", "foo.localhost", "db.internal", "printer.local", "metadata.google.internal"]
+    "accept": [
+      "https://api.openai.com",
+      "https://us-south.ml.cloud.ibm.com/v1",
+      "http://1.1.1.1/x"
+    ],
+    "rejectScheme": [
+      "file:///etc/passwd",
+      "gopher://example.com",
+      "ftp://example.com"
+    ],
+    "rejectHost": [
+      "localhost",
+      "localhost.",
+      "LOCALHOST",
+      "foo.localhost",
+      "db.internal",
+      "printer.local",
+      "metadata.google.internal"
+    ]
   }
 }

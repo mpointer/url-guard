@@ -2,6 +2,16 @@
 
 Both packages share one version number and one `v*` tag. The npm package is `@mpointer/url-guard` (npm rejects `url-guard` as too close to an existing `urlguard`); the PyPI project is `url-guard`.
 
+## 0.1.1 (2026-10-20)
+
+Both packages:
+
+- IPv4 multicast (224.0.0.0/4) and reserved (240.0.0.0/4, which includes
+  broadcast) are now blocked unconditionally, like IPv6 multicast already
+  was, instead of being opened by `allowPrivate` / `allow_private`. Nothing
+  self-hosted lives there. Found while porting a consumer whose old guard
+  rejected them regardless of its private-network allowance.
+
 ## 0.1.0 (2026-10-20)
 
 First release, extracted from two production guards that had each grown a

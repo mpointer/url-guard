@@ -263,10 +263,17 @@ function inV4Range(bytes: readonly number[], prefix: readonly number[], maskBits
   return true;
 }
 
-/** Ranges blocked no matter what: metadata and link-local. */
+/**
+ * Ranges blocked no matter what: metadata, link-local, multicast and
+ * reserved. Nothing self-hosted lives on a multicast or a reserved address,
+ * so `allowPrivate` has no business opening them (the IPv6 multicast block
+ * below was always unconditional; this makes IPv4 match).
+ */
 const V4_ALWAYS_BLOCKED: ReadonlyArray<[number[], number, string]> = [
   [[169, 254, 0, 0], 16, 'link-local (includes the cloud metadata endpoint)'],
   [[100, 100, 100, 200], 32, 'Alibaba Cloud metadata endpoint'],
+  [[224, 0, 0, 0], 4, 'multicast 224.0.0.0/4'],
+  [[240, 0, 0, 0], 4, 'reserved 240.0.0.0/4 (includes broadcast)'],
 ];
 
 /** Ranges blocked unless `allowPrivate`: genuinely internal but sometimes real. */
@@ -283,8 +290,6 @@ const V4_PRIVATE: ReadonlyArray<[number[], number, string]> = [
   [[198, 18, 0, 0], 15, 'benchmarking 198.18.0.0/15'],
   [[198, 51, 100, 0], 24, 'TEST-NET-2'],
   [[203, 0, 113, 0], 24, 'TEST-NET-3'],
-  [[224, 0, 0, 0], 4, 'multicast 224.0.0.0/4'],
-  [[240, 0, 0, 0], 4, 'reserved 240.0.0.0/4'],
 ];
 
 function classifyV4(bytes: readonly number[], allowPrivate: boolean): string | null {

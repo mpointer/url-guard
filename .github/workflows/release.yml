@@ -31,7 +31,18 @@ jobs:
       - run: npx tsc --noEmit
       - run: npx vitest run
       - run: npm run build
-      - run: npm publish --provenance --access public
+      - name: Skip when this version is already on npm (the first release is published by hand)
+        id: npm_exists
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          if npm view "url-guard@$PKG" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "url-guard@$PKG is already published; skipping"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.npm_exists.outputs.exists != 'true'
+        run: npm publish --provenance --access public
 
   publish-pypi:
     runs-on: ubuntu-latest
@@ -52,3 +63,5 @@ jobs:
       - run: pytest python/tests -q
       - run: python -m build python --outdir dist
       - uses: pypa/gh-action-pypi-publish@release/v1 # OIDC trusted publishing; no token stored
+        with:
+          skip-existing: true

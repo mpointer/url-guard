@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "url-guard"
+version = "0.1.0"
+description = "SSRF guard for outbound URLs: canonical IP-literal parsing in every encoding, private/metadata/link-local classification, DNS-resolved validation, HTTPS and host allow-list rules. Zero dependencies. Wire-identical to the url-guard npm package."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Michael Pointer", email = "mpointer@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = []
+keywords = ["ssrf", "security", "url", "metadata", "private-ip", "egress", "allowlist", "httpx", "requests"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Topic :: Security",
+]
+
+[project.urls]
+Homepage = "https://github.com/mpointer/url-guard"
+Issues = "https://github.com/mpointer/url-guard/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/url_guard"]

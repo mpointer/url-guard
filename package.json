@@ -1,0 +1,57 @@
+{
+  "name": "url-guard",
+  "version": "0.1.0",
+  "description": "SSRF guard for outbound URLs: canonical IP-literal parsing in every encoding, private/metadata/link-local classification, DNS-resolved validation, and a fetch that re-validates every redirect. Zero dependencies.",
+  "license": "MIT",
+  "author": "Michael Pointer <mpointer@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mpointer/url-guard.git"
+  },
+  "homepage": "https://github.com/mpointer/url-guard#readme",
+  "bugs": "https://github.com/mpointer/url-guard/issues",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "keywords": [
+    "ssrf",
+    "security",
+    "url",
+    "fetch",
+    "safe-fetch",
+    "metadata",
+    "private-ip",
+    "redirect",
+    "egress",
+    "allowlist"
+  ],
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

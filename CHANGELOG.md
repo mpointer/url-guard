@@ -2,7 +2,7 @@
 
 Both packages share one version number and one `v*` tag. The npm package is `@mpointer/url-guard` (npm rejects `url-guard` as too close to an existing `urlguard`); the PyPI project is `url-guard`.
 
-## Unreleased
+## 0.2.0 (2026-10-28)
 
 - TypeScript: `guardedLookup(opts)`, a `lookup` for undici's
   `Agent({ connect: { lookup } })` (as `safeFetch`'s `dispatcher`) or for
@@ -19,6 +19,10 @@ Both packages share one version number and one `v*` tag. The npm package is `@mp
 - CI: actions pinned to commit SHAs, with Dependabot keeping them current;
   the release job's npm is pinned (`11.21.1`) instead of `@latest`;
   dev-dependency advisories in vitest/vite cleared (lockfile only).
+- Release: the npm job runs `npm stage publish`, matching a trust
+  relationship that allows staging only; a maintainer approves each version
+  with 2FA. 0.1.2 never reached npm for that reason (it is on PyPI); 0.2.0
+  supersedes it.
 
 ## 0.1.2 (2026-10-28)
 

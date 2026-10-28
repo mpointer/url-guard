@@ -41,8 +41,10 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
+      # The trust relationship allows staging only: the version goes live when a
+      # maintainer runs `npm stage approve <id>` with 2FA (proof of presence).
       - if: steps.npm_exists.outputs.exists != 'true'
-        run: npm publish --provenance --access public
+        run: npm stage publish --provenance --access public
 
   publish-pypi:
     runs-on: ubuntu-latest

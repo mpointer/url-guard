@@ -1,6 +1,6 @@
 {
   "name": "@mpointer/url-guard",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "SSRF guard for outbound URLs: canonical IP-literal parsing in every encoding, private/metadata/link-local classification, DNS-resolved validation, and a fetch that re-validates every redirect. Zero dependencies.",
   "license": "MIT",
   "author": "Michael Pointer <mpointer@gmail.com>",

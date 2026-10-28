@@ -27,10 +27,11 @@ from __future__ import annotations
 import asyncio
 import re
 import socket
+from collections.abc import Awaitable, Callable, Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as _FutureTimeout
 from dataclasses import dataclass
-from typing import Awaitable, Callable, Iterable, Literal, Optional, Sequence, Union
+from typing import Literal
 from urllib.parse import SplitResult, urlsplit
 
 __all__ = [
@@ -108,7 +109,7 @@ _DEC_PART = re.compile(r"\d+")
 _HEXTET = re.compile(r"[0-9a-fA-F]{1,4}")
 
 
-def _parse_ipv4_part(part: str) -> Optional[int]:
+def _parse_ipv4_part(part: str) -> int | None:
     if part == "":
         return None
     if _HEX_PART.fullmatch(part):
@@ -120,7 +121,7 @@ def _parse_ipv4_part(part: str) -> Optional[int]:
     return None
 
 
-def parse_ipv4(host: str) -> Optional[ParsedIp]:
+def parse_ipv4(host: str) -> ParsedIp | None:
     """inet_aton-style IPv4 parsing: the lenient grammar every OS resolver and
     the WHATWG URL parser accept, which is why ``http://2130706433/`` and
     ``http://0x7f000001/`` are loopback in a browser. A guard that only knows
@@ -151,7 +152,7 @@ def parse_ipv4(host: str) -> Optional[ParsedIp]:
     return ParsedIp(4, tuple((numeric >> shift) & 0xFF for shift in (24, 16, 8, 0)))
 
 
-def parse_ipv6(host: str) -> Optional[ParsedIp]:
+def parse_ipv6(host: str) -> ParsedIp | None:
     """IPv6, including ``::`` compression and a trailing dotted-quad tail."""
     if ":" not in host:
         return None
@@ -161,7 +162,7 @@ def parse_ipv6(host: str) -> Optional[ParsedIp]:
     if len(halves) > 2:
         return None
 
-    def expand(segment: str) -> Optional[list[int]]:
+    def expand(segment: str) -> list[int] | None:
         if segment == "":
             return []
         groups = segment.split(":")
@@ -193,7 +194,7 @@ def parse_ipv6(host: str) -> Optional[ParsedIp]:
     return ParsedIp(6, tuple(head + [0] * fill + tail))
 
 
-def parse_ip_literal(host: str) -> Optional[ParsedIp]:
+def parse_ip_literal(host: str) -> ParsedIp | None:
     """Parse a hostname as an IP literal in any encoding, or return None."""
     candidate = host.strip()
     if candidate.startswith("[") and candidate.endswith("]"):
@@ -240,7 +241,7 @@ V4_PRIVATE: tuple[tuple[tuple[int, ...], int, str], ...] = (
 )
 
 
-def _classify_v4(b: Sequence[int], allow_private: bool) -> Optional[str]:
+def _classify_v4(b: Sequence[int], allow_private: bool) -> str | None:
     for prefix, bits, label in V4_ALWAYS_BLOCKED:
         if _in_v4_range(b, prefix, bits):
             return label
@@ -261,12 +262,12 @@ V6_ALWAYS_BLOCKED: tuple[tuple[tuple[int, ...], str], ...] = (
 )
 
 
-def _classify_v6(b: Sequence[int], allow_private: bool) -> Optional[str]:
+def _classify_v6(b: Sequence[int], allow_private: bool) -> str | None:
     def zero_prefix(up_to: int) -> bool:
         return all(x == 0 for x in b[:up_to])
 
     for literal, label in V6_ALWAYS_BLOCKED:
-        if all(x == y for x, y in zip(literal, b)):
+        if all(x == y for x, y in zip(literal, b, strict=True)):
             return label
 
     # Every embedded-IPv4 form is unwrapped BEFORE the allow_private early
@@ -310,7 +311,7 @@ def _classify_v6(b: Sequence[int], allow_private: bool) -> Optional[str]:
     return None
 
 
-def classify_address(host: str, allow_private: bool = False) -> Optional[str]:
+def classify_address(host: str, allow_private: bool = False) -> str | None:
     """Why this address is not a permitted destination, or None if it is fine.
     Accepts an IP literal in any encoding; returns None for a non-IP string (a
     DNS name has to be resolved first; see :func:`assert_public_url_resolved`)."""
@@ -361,10 +362,10 @@ def _matches_suffix(host: str, suffix: str) -> bool:
 
 
 def assert_public_url(
-    raw: Union[str, SplitResult],
+    raw: str | SplitResult,
     *,
     allow_private: bool = False,
-    allowed_host_suffixes: Optional[Iterable[str]] = None,
+    allowed_host_suffixes: Iterable[str] | None = None,
     require_https: bool = False,
 ) -> SplitResult:
     """Synchronous structural check: scheme, blocked hostnames, IP literals in
@@ -454,7 +455,7 @@ def default_lookup_host(hostname: str) -> list[str]:
     """Every address the system resolver returns for ``hostname``, in order,
     deduplicated. Raises ``socket.gaierror`` when the name does not resolve."""
     infos = socket.getaddrinfo(hostname, None)
-    return list(dict.fromkeys(info[4][0] for info in infos))
+    return list(dict.fromkeys(str(info[4][0]) for info in infos))
 
 
 def _check_resolved(host: str, addresses: Sequence[str], allow_private: bool) -> None:
@@ -467,12 +468,12 @@ def _check_resolved(host: str, addresses: Sequence[str], allow_private: bool) ->
 
 
 def assert_public_url_resolved(
-    raw: Union[str, SplitResult],
+    raw: str | SplitResult,
     *,
-    lookup_host: Optional[Callable[[str], Sequence[str]]] = None,
-    lookup_timeout: Optional[float] = DEFAULT_LOOKUP_TIMEOUT,
+    lookup_host: Callable[[str], Sequence[str]] | None = None,
+    lookup_timeout: float | None = DEFAULT_LOOKUP_TIMEOUT,
     allow_private: bool = False,
-    allowed_host_suffixes: Optional[Iterable[str]] = None,
+    allowed_host_suffixes: Iterable[str] | None = None,
     require_https: bool = False,
 ) -> SplitResult:
     """:func:`assert_public_url` plus DNS: a hostname that is not already an
@@ -517,16 +518,16 @@ def assert_public_url_resolved(
 async def _default_lookup_host_async(hostname: str) -> list[str]:
     loop = asyncio.get_running_loop()
     infos = await loop.getaddrinfo(hostname, None)
-    return list(dict.fromkeys(info[4][0] for info in infos))
+    return list(dict.fromkeys(str(info[4][0]) for info in infos))
 
 
 async def assert_public_url_resolved_async(
-    raw: Union[str, SplitResult],
+    raw: str | SplitResult,
     *,
-    lookup_host: Optional[Callable[[str], Union[Sequence[str], Awaitable[Sequence[str]]]]] = None,
-    lookup_timeout: Optional[float] = DEFAULT_LOOKUP_TIMEOUT,
+    lookup_host: Callable[[str], Sequence[str] | Awaitable[Sequence[str]]] | None = None,
+    lookup_timeout: float | None = DEFAULT_LOOKUP_TIMEOUT,
     allow_private: bool = False,
-    allowed_host_suffixes: Optional[Iterable[str]] = None,
+    allowed_host_suffixes: Iterable[str] | None = None,
     require_https: bool = False,
 ) -> SplitResult:
     """Async twin of :func:`assert_public_url_resolved` using the event loop's
@@ -543,8 +544,8 @@ async def assert_public_url_resolved_async(
             return await _default_lookup_host_async(host)
         result = lookup_host(host)
         if asyncio.iscoroutine(result) or isinstance(result, Awaitable):
-            return await result  # type: ignore[no-any-return]
-        return result  # type: ignore[return-value]
+            return await result
+        return result
 
     try:
         addresses = await (asyncio.wait_for(run(), lookup_timeout) if lookup_timeout is not None else run())

@@ -34,7 +34,9 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: ${{ matrix.python }}
-      - run: pip install ./python pytest build urllib3 # urllib3: the parser requests uses; tests assert agreement
+      - run: pip install ./python pytest build urllib3 ruff==0.17.3 mypy==2.4.0 # urllib3: the parser requests uses; tests assert agreement
+      - run: ruff check python
+      - run: mypy --config-file python/pyproject.toml python/src
       - run: pytest python/tests -q
       - name: Verify the sdist and wheel build
         run: python -m build python --outdir /tmp/ug-dist

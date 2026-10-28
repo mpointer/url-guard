@@ -5,7 +5,8 @@
  * vectors.json and are decoded by the Python suite too.
  */
 import { readFileSync } from 'node:fs';
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { createServer, type Server } from 'node:http';
+import { describe, it, expect, vi, afterEach, beforeAll, afterAll } from 'vitest';
 import {
   assertPublicUrl,
   assertPublicUrlResolved,
@@ -26,7 +27,7 @@ interface Vectors {
   privateAllowed: string[];
   loopbackForms: string[];
   notIp: string[];
-  urls: { accept: string[]; rejectScheme: string[]; rejectHost: string[] };
+  urls: { accept: string[]; rejectAmbiguous: string[]; rejectScheme: string[]; rejectHost: string[] };
 }
 const V = JSON.parse(readFileSync(new URL('./vectors.json', import.meta.url), 'utf8')) as Vectors;
 
@@ -114,6 +115,14 @@ describe('assertPublicUrl', () => {
   it('rejects internal hostnames and their trailing-dot form', () => {
     for (const host of V.urls.rejectHost) {
       expect(reasonOf(() => assertPublicUrl(`http://${host}/`)), host).toBe('blocked-host');
+    }
+  });
+
+  it('rejects URLs whose host some client reads as an internal address', () => {
+    // WHATWG resolves each of these to the internal address, so TS rejects on the
+    // address; Python rejects the netloc as ambiguous. Both must reject.
+    for (const url of V.urls.rejectAmbiguous) {
+      expect(reasonOf(() => assertPublicUrl(url)), url).toBe('private-address');
     }
   });
 
@@ -412,5 +421,45 @@ describe('safeFetch limits', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('small', { status: 200 })));
     const res = await safeFetch('https://a.example/ok', {}, { maxBytes: 1024, lookupHost: async () => ['93.184.216.34'] });
     expect(await res.text()).toBe('small');
+  });
+});
+
+// Real undici fetch against a loopback server: a stubbed fetch never produces a
+// real timeout error or a real Response.url, which is how both slipped through.
+describe('safeFetch against a real server', () => {
+  let server: Server;
+  let base: string;
+  const opts = { allowPrivate: true };
+
+  beforeAll(async () => {
+    server = createServer((req, res) => {
+      if (req.url === '/hop') { res.writeHead(302, { location: '/final' }); res.end('moved'); return; }
+      if (req.url === '/hang') return; // never answers
+      res.end('ok');
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    base = `http://127.0.0.1:${typeof address === 'object' && address ? address.port : 0}`;
+  });
+  afterAll(() => { server.closeAllConnections(); server.close(); });
+
+  it('follows a redirect and reports the final URL, with and without maxBytes', async () => {
+    for (const extra of [{}, { maxBytes: 1024 }]) {
+      const res = await safeFetch(`${base}/hop`, {}, { ...opts, ...extra });
+      expect(res.url).toBe(`${base}/final`);
+      expect(await res.text()).toBe('ok');
+    }
+  });
+
+  it('turns its own fetch timeout into UnsafeUrlError("timeout")', async () => {
+    const err = await safeFetch(`${base}/hang`, {}, { ...opts, timeoutMs: 100 }).catch((e) => e);
+    expect(err).toBeInstanceOf(UnsafeUrlError);
+    expect((err as UnsafeUrlError).reason).toBe('timeout');
+  });
+
+  it("leaves a caller's own abort as the caller's error", async () => {
+    const err = await safeFetch(`${base}/hang`, { signal: AbortSignal.timeout(50) }, opts).catch((e) => e);
+    expect(err).not.toBeInstanceOf(UnsafeUrlError);
+    expect((err as Error).name).toBe('TimeoutError');
   });
 });

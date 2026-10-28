@@ -503,16 +503,19 @@ export async function assertPublicUrlResolved(
   try {
     const lookup = (opts.lookupHost ?? defaultLookupHost)(host);
     const timeoutMs = opts.lookupTimeoutMs;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     addresses = timeoutMs === undefined
       ? await lookup
       : await Promise.race([
         lookup,
-        new Promise<never>((_, reject) =>
-          setTimeout(
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
             () => reject(new UnsafeUrlError(`DNS lookup for ${host} exceeded ${timeoutMs}ms`, 'timeout')),
             timeoutMs,
-          ).unref?.()),
-      ]);
+          );
+          timer.unref?.();
+        }),
+      ]).finally(() => clearTimeout(timer));
   } catch (err) {
     // A lookup that timed out is its own reason: callers that treat 'dns'
     // as "transient, retry later" must not silently absorb a resolver
@@ -577,11 +580,15 @@ function capResponseBody(response: Response, maxBytes: number): Response {
       controller.enqueue(chunk);
     },
   });
-  return new Response(response.body.pipeThrough(limiter), {
+  const capped = new Response(response.body.pipeThrough(limiter), {
     status: response.status,
     statusText: response.statusText,
     headers: response.headers,
   });
+  // A constructed Response has url "" and redirected false; keep the real ones.
+  Object.defineProperty(capped, 'url', { value: response.url });
+  Object.defineProperty(capped, 'redirected', { value: response.redirected });
+  return capped;
 }
 
 /**
@@ -621,9 +628,19 @@ export async function safeFetch(
         'timeout',
       );
     }
-    const timeout = AbortSignal.timeout(Math.min(timeoutMs, remaining()));
+    const hopMs = Math.min(timeoutMs, remaining());
+    const timeout = AbortSignal.timeout(hopMs);
     const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
-    const response = await fetch(current, { ...init, method, body: body ?? null, headers, signal, redirect: 'manual' });
+    let response: Response;
+    try {
+      response = await fetch(current, { ...init, method, body: body ?? null, headers, signal, redirect: 'manual' });
+    } catch (err) {
+      // Only relabel our own deadline; a caller's abort stays the caller's error.
+      if (timeout.aborted && !init.signal?.aborted) {
+        throw new UnsafeUrlError(`Request to ${current.origin} exceeded ${hopMs}ms`, 'timeout');
+      }
+      throw err;
+    }
     if (!REDIRECT_STATUSES.has(response.status)) {
       return opts.maxBytes === undefined ? response : capResponseBody(response, opts.maxBytes);
     }
@@ -633,6 +650,8 @@ export async function safeFetch(
     if (!location) {
       return opts.maxBytes === undefined ? response : capResponseBody(response, opts.maxBytes);
     }
+    // The Location header is all we need; release the connection before any exit below.
+    await response.body?.cancel().catch(() => {});
 
     if (hop >= maxRedirects) {
       throw new UnsafeUrlError(
@@ -680,7 +699,6 @@ export async function safeFetch(
       );
     }
 
-    await response.body?.cancel().catch(() => {});
     current = await assertPublicUrlResolved(next, {
       ...opts,
       lookupTimeoutMs: Math.min(timeoutMs, remaining() || 1),

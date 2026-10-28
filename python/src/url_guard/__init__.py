@@ -386,7 +386,10 @@ def assert_public_url(
 
     Returns the parsed URL (``urllib.parse.SplitResult``).
     """
-    url = raw if isinstance(raw, SplitResult) else urlsplit(raw)
+    try:
+        url = raw if isinstance(raw, SplitResult) else urlsplit(raw)
+    except ValueError as err:  # e.g. an unclosed or non-IP "[...]" host
+        raise UnsafeUrlError(f"Invalid URL: {raw!s} ({err})", "parse") from None
     if not url.scheme and not url.netloc:
         raise UnsafeUrlError(f"Invalid URL: {raw!s}", "parse")
     if url.scheme not in ("http", "https"):
@@ -397,6 +400,13 @@ def assert_public_url(
         url.port  # noqa: B018 - raises ValueError on a malformed port
     except ValueError as err:
         raise UnsafeUrlError(f"Invalid URL: {raw!s} ({err})", "parse") from None
+
+    # Reject netlocs other parsers read differently. urllib3 (requests) ends the
+    # authority at "\" and percent-decodes the host, so "http://127.0.0.1\@evil.com/"
+    # connects to 127.0.0.1 while urlsplit reports evil.com. Non-ASCII hosts must
+    # arrive IDNA-encoded (xn--) so no client normalizes them into something else.
+    if "\\" in url.netloc or "%" in (url.hostname or "") or not url.netloc.isascii():
+        raise UnsafeUrlError(f"Ambiguous host in URL: {url.geturl()}", "parse")
 
     host = _normalize_hostname(url.hostname or "")
     if host == "":

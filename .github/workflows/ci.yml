@@ -34,7 +34,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - run: pip install ./python pytest build
+      - run: pip install ./python pytest build urllib3 # urllib3: the parser requests uses; tests assert agreement
       - run: pytest python/tests -q
       - name: Verify the sdist and wheel build
         run: python -m build python --outdir /tmp/ug-dist

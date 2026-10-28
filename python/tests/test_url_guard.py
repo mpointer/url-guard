@@ -110,6 +110,24 @@ class TestAssertPublicUrl:
         assert reason_of(lambda: assert_public_url("http:///path")) == "parse"
         assert reason_of(lambda: assert_public_url("http://example.com:notaport/")) == "parse"
 
+    def test_rejects_hosts_requests_would_read_differently(self):
+        # urllib3 connects to 127.0.0.1 / 169.254.169.254 for these, while
+        # urlsplit reports example.com (public, so even the resolved check passed).
+        for url in V["urls"]["rejectAmbiguous"]:
+            assert reason_of(lambda: assert_public_url(url)) == "parse", url
+            assert reason_of(lambda: assert_public_url_resolved(url, lookup_host=lambda h: ["93.184.216.34"])) == "parse", url
+
+    def test_accepted_urls_name_the_host_requests_will_connect_to(self):
+        # The guard is only as good as its agreement with the client's parser.
+        urllib3 = pytest.importorskip("urllib3")
+        for url in V["urls"]["accept"]:
+            assert urllib3.util.parse_url(url).host == assert_public_url(url).hostname, url
+
+    def test_malformed_brackets_are_parse_errors_not_bare_value_errors(self):
+        for url in ["http://[::1", "http://[nope]/"]:
+            assert reason_of(lambda: assert_public_url(url)) == "parse", url
+            assert is_public_url(url) is False
+
     def test_is_a_value_error_for_existing_callers(self):
         with pytest.raises(ValueError, match="HTTPS"):
             assert_public_url("http://gateway.example.com/mcp", require_https=True)

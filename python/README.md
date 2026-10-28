@@ -28,6 +28,11 @@ assert_public_url(base_url, require_https=True)      # plaintext only to loopbac
 `timeout`), so a call site that already catches `ValueError` around its own
 URL check keeps working when it switches.
 
+A URL whose host another client would read differently is rejected as
+`parse`: a `\` in the netloc (`requests` ends the host there), a `%` in the
+host (urllib3 decodes it), or a non-ASCII netloc. Pass internationalized
+hosts IDNA-encoded (`xn--...`).
+
 See the [repository README](https://github.com/mpointer/url-guard) for the
 full design: why hostname string matching is not a guard, the encodings
 that are canonicalized, what `allow_private` never relaxes, the DNS rules,

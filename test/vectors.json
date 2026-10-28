@@ -1,5 +1,5 @@
 {
-  "comment": "Shared address vectors decoded by both the TypeScript and the Python suites. Every entry is a hostname as it appears in a URL (IPv6 without brackets).",
+  "comment": "Shared vectors decoded by both the TypeScript and the Python suites. Address entries are hostnames as they appear in a URL (IPv6 without brackets). urls.rejectAmbiguous are URLs whose host some HTTP client reads as an internal address; each language may reject them for a different reason (TS: WHATWG resolves the host to the address; Python: the netloc is rejected as ambiguous), but both must reject.",
   "private": [
     [
       "127.0.0.1",
@@ -187,7 +187,16 @@
     "accept": [
       "https://api.openai.com",
       "https://us-south.ml.cloud.ibm.com/v1",
-      "http://1.1.1.1/x"
+      "http://1.1.1.1/x",
+      "https://api.example.com/a\\b?q=%20",
+      "https://user:p%40ss@example.com/",
+      "https://xn--bcher-kva.example/"
+    ],
+    "rejectAmbiguous": [
+      "http://127.0.0.1\\@example.com/",
+      "http://169.254.169.254\\@example.com/latest/meta-data/",
+      "http://%31%32%37.0.0.1/",
+      "http://①②⑦.0.0.1/"
     ],
     "rejectScheme": [
       "file:///etc/passwd",

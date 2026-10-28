@@ -2,6 +2,42 @@
 
 Both packages share one version number and one `v*` tag. The npm package is `@mpointer/url-guard` (npm rejects `url-guard` as too close to an existing `urlguard`); the PyPI project is `url-guard`.
 
+## 0.1.2 (2026-10-28)
+
+Python (security):
+
+- `assert_public_url` (and so both resolved variants) now rejects a netloc
+  that another HTTP client would read differently. `urlsplit` reported
+  `http://127.0.0.1\@example.com/` as host `example.com`, so even the
+  DNS-resolved check passed, while `requests` (urllib3) ends the host at the
+  backslash and connected to 127.0.0.1. urllib3 also percent-decodes the host
+  (`%31%32%37.0.0.1`). Rejected now, as reason `parse`: any `\` in the netloc,
+  any `%` in the host, and any non-ASCII netloc. **Behavior change:**
+  internationalized hosts must be passed IDNA-encoded (`xn--...`). The
+  TypeScript package is unaffected, because `new URL()` and `fetch` share one
+  parser.
+- A URL `urlsplit` itself refuses (`http://[::1`) now raises
+  `UnsafeUrlError('parse')` instead of a bare `ValueError`, so `is_public_url`
+  returns `False` instead of raising.
+- Ships `py.typed`.
+
+TypeScript:
+
+- `safeFetch` raises `UnsafeUrlError('timeout')` when its own per-hop timeout
+  fires during the request, as documented, instead of a bare `DOMException`.
+  An abort from the caller's own `signal` is passed through unchanged.
+- With `maxBytes` set, the returned response keeps its real `url` and
+  `redirected` instead of `""` and `false`.
+- A redirect response's body is released before every refusal, not only on
+  the success path, so a refused hop no longer holds its connection open.
+- The DNS lookup timer is cleared when the lookup finishes first.
+- `engines.node` is `>=20.3`, the first release with `AbortSignal.any`.
+
+Both: `test/vectors.json` gains URL-level vectors (`urls.rejectAmbiguous`,
+plus unambiguous neighbours in `urls.accept`) decoded by both suites, and the
+Python suite asserts that urllib3 reads the same host as the guard for every
+accepted URL.
+
 ## 0.1.1 (2026-10-20)
 
 Both packages:

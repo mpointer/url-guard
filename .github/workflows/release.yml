@@ -59,7 +59,7 @@ jobs:
             echo "Tag v$TAG does not match python/pyproject.toml version $PKG" >&2
             exit 1
           fi
-      - run: pip install ./python pytest build
+      - run: pip install ./python pytest build urllib3 # urllib3: the parser requests uses; tests assert agreement
       - run: pytest python/tests -q
       - run: python -m build python --outdir dist
       - uses: pypa/gh-action-pypi-publish@release/v1 # OIDC trusted publishing; no token stored

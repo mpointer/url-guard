@@ -5,7 +5,7 @@
  * vectors.json and are decoded by the Python suite too.
  */
 import { readFileSync } from 'node:fs';
-import { createServer, type Server } from 'node:http';
+import { createServer, get, type Server } from 'node:http';
 import { describe, it, expect, vi, afterEach, beforeAll, afterAll } from 'vitest';
 import {
   assertPublicUrl,
@@ -15,6 +15,7 @@ import {
   isPrivateAddress,
   isPublicUrl,
   parseIpLiteral,
+  guardedLookup,
   ResponseTooLargeError,
   safeFetch,
   UnsafeUrlError,
@@ -228,6 +229,19 @@ describe('assertPublicUrlResolved', () => {
       lookupHost: () => new Promise<string[]>(() => {}),
     }).catch((e) => e);
     expect((err as UnsafeUrlError).reason).toBe('timeout');
+  });
+
+  it('bounds a stalled lookup by default at 5s', async () => {
+    vi.useFakeTimers();
+    try {
+      const pending = assertPublicUrlResolved('https://stalled.example/', {
+        lookupHost: () => new Promise<string[]>(() => {}),
+      }).catch((e) => e);
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(((await pending) as UnsafeUrlError).reason).toBe('timeout');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('applies the allow-list before resolving', async () => {
@@ -461,5 +475,39 @@ describe('safeFetch against a real server', () => {
     const err = await safeFetch(`${base}/hang`, { signal: AbortSignal.timeout(50) }, opts).catch((e) => e);
     expect(err).not.toBeInstanceOf(UnsafeUrlError);
     expect((err as Error).name).toBe('TimeoutError');
+  });
+});
+
+describe('guardedLookup', () => {
+  let server: Server;
+  let port = 0;
+  beforeAll(async () => {
+    server = createServer((_, res) => res.end('INTERNAL SECRET'));
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    port = typeof address === 'object' && address ? address.port : 0;
+  });
+  afterAll(() => { server.closeAllConnections(); server.close(); });
+
+  const request = (lookup: ReturnType<typeof guardedLookup>) =>
+    new Promise<string>((resolve, reject) => {
+      get(`http://rebind.example:${port}/`, { lookup }, (res) => {
+        let body = '';
+        res.on('data', (chunk) => { body += chunk; }).on('end', () => resolve(body));
+      }).on('error', reject);
+    });
+
+  it('blocks a name that rebinds to loopback after passing the pre-check', async () => {
+    let answers = 0;
+    const lookupHost = async () => (answers++ === 0 ? ['93.184.216.34'] : ['127.0.0.1']);
+    await assertPublicUrlResolved(`http://rebind.example:${port}/`, { lookupHost });
+    const err = await request(guardedLookup({ lookupHost })).catch((e) => e);
+    expect(err).toBeInstanceOf(UnsafeUrlError);
+    expect((err as UnsafeUrlError).reason).toBe('private-address');
+  });
+
+  it('connects to the checked address when it is permitted', async () => {
+    const lookup = guardedLookup({ allowPrivate: true, lookupHost: async () => ['127.0.0.1'] });
+    expect(await request(lookup)).toBe('INTERNAL SECRET');
   });
 });

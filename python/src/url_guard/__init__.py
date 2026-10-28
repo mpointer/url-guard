@@ -48,6 +48,7 @@ __all__ = [
     "assert_public_url_resolved",
     "assert_public_url_resolved_async",
     "default_lookup_host",
+    "DEFAULT_LOOKUP_TIMEOUT",
 ]
 
 UnsafeUrlReason = Literal[
@@ -444,6 +445,11 @@ def is_public_url(raw: str, **opts: object) -> bool:
         return False
 
 
+# Default cap (seconds) on one DNS lookup; pass lookup_timeout=None to wait as
+# long as the OS resolver does.
+DEFAULT_LOOKUP_TIMEOUT = 5.0
+
+
 def default_lookup_host(hostname: str) -> list[str]:
     """Every address the system resolver returns for ``hostname``, in order,
     deduplicated. Raises ``socket.gaierror`` when the name does not resolve."""
@@ -464,7 +470,7 @@ def assert_public_url_resolved(
     raw: Union[str, SplitResult],
     *,
     lookup_host: Optional[Callable[[str], Sequence[str]]] = None,
-    lookup_timeout: Optional[float] = None,
+    lookup_timeout: Optional[float] = DEFAULT_LOOKUP_TIMEOUT,
     allow_private: bool = False,
     allowed_host_suffixes: Optional[Iterable[str]] = None,
     require_https: bool = False,
@@ -475,7 +481,8 @@ def assert_public_url_resolved(
     both a public and a private A record is exactly the shape an attacker
     wants.
 
-    ``lookup_timeout`` (seconds) bounds the lookup. ``socket.getaddrinfo`` has
+    ``lookup_timeout`` (seconds, default 5; ``None`` for no cap) bounds the
+    lookup. ``socket.getaddrinfo`` has
     no timeout of its own, so the lookup runs on a helper thread and a stall
     raises ``UnsafeUrlError('timeout')``; the thread is abandoned and ends
     when the resolver gives up. Pass ``lookup_host`` to inject a resolver
@@ -517,7 +524,7 @@ async def assert_public_url_resolved_async(
     raw: Union[str, SplitResult],
     *,
     lookup_host: Optional[Callable[[str], Union[Sequence[str], Awaitable[Sequence[str]]]]] = None,
-    lookup_timeout: Optional[float] = None,
+    lookup_timeout: Optional[float] = DEFAULT_LOOKUP_TIMEOUT,
     allow_private: bool = False,
     allowed_host_suffixes: Optional[Iterable[str]] = None,
     require_https: bool = False,

@@ -14,16 +14,17 @@
  * allow-list, and, in `safeFetch`, refuses to follow a redirect without
  * re-running the whole check on the new target.
  *
- * KNOWN LIMIT (deliberate, documented rather than papered over): between the
- * DNS resolution here and the socket `fetch()` opens, the name can be
- * re-resolved to a different address (classic DNS rebinding). Closing that
- * needs a custom agent that pins the connection to the address we validated,
- * which Node's `fetch` does not expose. What this module does buy is that a
- * name pointing at an internal host, an IP literal in any encoding, and a
- * redirect pivot are all rejected outright, the three shapes that actually
- * appear in findings. Treat the rebinding window as accepted risk for
- * authenticated or token-gated call sites, not as something this guard closes.
+ * DNS rebinding: between the DNS resolution here and the socket `fetch()`
+ * opens, the name can be re-resolved to a different address. `safeFetch`
+ * alone does not close that window. `guardedLookup` does: handed to the
+ * socket layer (undici's `Agent({ connect: { lookup } })` as the `dispatcher`,
+ * or `http.request`'s `lookup`), it applies the same rules to the address
+ * actually dialed. It stays opt-in because Node exposes undici's `Agent` only
+ * through the `undici` package, and this module has no dependencies.
  */
+
+import type { LookupAddress } from 'node:dns';
+import type { LookupFunction } from 'node:net';
 
 export type UnsafeUrlReason =
   | 'parse'
@@ -73,10 +74,9 @@ export interface SafeUrlOptions {
    */
   lookupHost?: (hostname: string) => Promise<string[]>;
   /**
-   * Cap on a single DNS lookup. `dns.lookup` has no timeout of its own, so
-   * without this a hostile or broken resolver stalls for as long as the OS
-   * allows. `safeFetch` sets it from `timeoutMs`; a direct caller of
-   * `assertPublicUrlResolved` may set it explicitly.
+   * Cap on a single DNS lookup (default 5000). `dns.lookup` has no timeout of
+   * its own, so without one a hostile or broken resolver stalls for as long
+   * as the OS allows. `safeFetch` sets it from `timeoutMs`.
    */
   lookupTimeoutMs?: number;
 }
@@ -475,6 +475,9 @@ export function isPublicUrl(raw: string | URL, opts: SafeUrlOptions = {}): boole
   }
 }
 
+/** Default cap on one DNS lookup when the caller sets none. */
+const DEFAULT_LOOKUP_TIMEOUT_MS = 5_000;
+
 async function defaultLookupHost(hostname: string): Promise<string[]> {
   // Dynamic so this module stays importable from a bundle that never calls
   // the async path.
@@ -498,24 +501,27 @@ export async function assertPublicUrlResolved(
 
   // Already an IP literal: assertPublicUrl classified it directly.
   if (parseIpLiteral(host)) return url;
+  await resolvePublic(host, opts);
+  return url;
+}
 
+/** Resolve `host` and return its addresses, rejecting if ANY is not permitted. */
+async function resolvePublic(host: string, opts: SafeUrlOptions): Promise<string[]> {
   let addresses: string[];
   try {
     const lookup = (opts.lookupHost ?? defaultLookupHost)(host);
-    const timeoutMs = opts.lookupTimeoutMs;
+    const timeoutMs = opts.lookupTimeoutMs ?? DEFAULT_LOOKUP_TIMEOUT_MS;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    addresses = timeoutMs === undefined
-      ? await lookup
-      : await Promise.race([
-        lookup,
-        new Promise<never>((_, reject) => {
-          timer = setTimeout(
-            () => reject(new UnsafeUrlError(`DNS lookup for ${host} exceeded ${timeoutMs}ms`, 'timeout')),
-            timeoutMs,
-          );
-          timer.unref?.();
-        }),
-      ]).finally(() => clearTimeout(timer));
+    addresses = await Promise.race([
+      lookup,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new UnsafeUrlError(`DNS lookup for ${host} exceeded ${timeoutMs}ms`, 'timeout')),
+          timeoutMs,
+        );
+        timer.unref?.();
+      }),
+    ]).finally(() => clearTimeout(timer));
   } catch (err) {
     // A lookup that timed out is its own reason: callers that treat 'dns'
     // as "transient, retry later" must not silently absorb a resolver
@@ -535,7 +541,38 @@ export async function assertPublicUrlResolved(
       throw new UnsafeUrlError(`Host ${host} resolves to ${address}: ${reason}`, 'private-address');
     }
   }
-  return url;
+  return addresses;
+}
+
+/**
+ * A `lookup` for `net.connect`, `http(s).request`/`http(s).Agent`, or undici's
+ * `new Agent({ connect: { lookup } })`, that applies the address rules to
+ * every address at CONNECT time. This closes DNS rebinding: the address
+ * checked is the address dialed, not one from an earlier, separate lookup.
+ *
+ * An IP-literal host never reaches `lookup`, so keep running
+ * `assertPublicUrl` (or `safeFetch`) on the URL; this covers what it cannot.
+ */
+export function guardedLookup(opts: SafeUrlOptions = {}): LookupFunction {
+  return (hostname, options, callback) => {
+    resolvePublic(normalizeHostname(hostname), opts).then(
+      (all) => {
+        const wanted = options.family === 4 || options.family === 6 ? options.family : 0;
+        const records = all
+          .map((address) => ({ address, family: address.includes(':') ? 6 : 4 }))
+          .filter((record) => wanted === 0 || record.family === wanted);
+        const first = records[0];
+        if (!first) {
+          callback(new UnsafeUrlError(`Host ${hostname} has no IPv${wanted} address`, 'dns'), '', 0);
+        } else if (options.all) {
+          (callback as unknown as (err: null, records: LookupAddress[]) => void)(null, records);
+        } else {
+          callback(null, first.address, first.family);
+        }
+      },
+      (err: Error) => callback(err, '', 0),
+    );
+  };
 }
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);

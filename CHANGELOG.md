@@ -2,6 +2,24 @@
 
 Both packages share one version number and one `v*` tag. The npm package is `@mpointer/url-guard` (npm rejects `url-guard` as too close to an existing `urlguard`); the PyPI project is `url-guard`.
 
+## Unreleased
+
+- TypeScript: `guardedLookup(opts)`, a `lookup` for undici's
+  `Agent({ connect: { lookup } })` (as `safeFetch`'s `dispatcher`) or for
+  `http.request`, that applies the address rules at connect time. This closes
+  the DNS-rebinding window that a check made before the connection leaves
+  open. Opt-in, so the package stays dependency-free. Python has no
+  equivalent: neither `requests` nor `httpx` exposes a hook on the address
+  it connects to.
+- Both, **behavior change:** a direct `assertPublicUrlResolved` /
+  `assert_public_url_resolved(_async)` call now caps the DNS lookup at 5 s
+  by default instead of waiting as long as the OS resolver does. Python's
+  `lookup_timeout=None` keeps the old unbounded behavior. `safeFetch` is
+  unchanged: it already set the cap from `timeoutMs`.
+- CI: actions pinned to commit SHAs, with Dependabot keeping them current;
+  the release job's npm is pinned (`11.21.1`) instead of `@latest`;
+  dev-dependency advisories in vitest/vite cleared (lockfile only).
+
 ## 0.1.2 (2026-10-28)
 
 Python (security):

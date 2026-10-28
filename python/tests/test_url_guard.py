@@ -202,6 +202,12 @@ class TestResolved:
         assert_public_url_resolved("https://1.1.1.1/", lookup_host=lambda h: calls.append(h) or ["1.1.1.1"])
         assert calls == []
 
+    def test_lookup_timeout_defaults_to_5s(self):
+        import inspect
+
+        for fn in (assert_public_url_resolved, assert_public_url_resolved_async):
+            assert inspect.signature(fn).parameters["lookup_timeout"].default == 5.0
+
     def test_lookup_timeout(self):
         def stall(h):
             time.sleep(1.0)

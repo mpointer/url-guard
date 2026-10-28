@@ -80,11 +80,23 @@ assertPublicUrl(process.env.ORCHESTRATOR_URL, {
 
 `requireHttps` rejects `http:` except to loopback (`localhost` or a loopback literal in any encoding), the one plaintext hop that never leaves the machine. `allowedHostSuffixes` restricts the host to listed domains: the host must equal a suffix or end with `"." + suffix`, so `cloud.ibm.com` matches `api.cloud.ibm.com` and not `evilcloud.ibm.com`. Neither rule relaxes the address rules: an allow-list entry of `169.254.169.254` still rejects.
 
-## DNS, and the one window this does not close
+## DNS, and DNS rebinding
 
-`assertPublicUrlResolved` resolves a hostname and requires every returned address to be permitted. One private answer in a multi-record response rejects the URL; a name with both a public and a private record is exactly the shape an attacker wants. A lookup that fails rejects rather than proceeds, and `lookupTimeoutMs` bounds it, because `dns.lookup` has no timeout of its own and a stalled resolver is a way to hold a serverless invocation open.
+`assertPublicUrlResolved` resolves a hostname and requires every returned address to be permitted. One private answer in a multi-record response rejects the URL; a name with both a public and a private record is exactly the shape an attacker wants. A lookup that fails rejects rather than proceeds, and it is bounded (5 s by default; `lookupTimeoutMs` / `lookup_timeout` to change it), because `dns.lookup` has no timeout of its own and a stalled resolver is a way to hold a serverless invocation open.
 
-Between that resolution and the socket your HTTP client opens, the name can be re-resolved to a different address. That is DNS rebinding, and closing it needs a client that pins the connection to the validated address, which Node's `fetch` does not expose. This library says so instead of pretending otherwise. What it does buy is that an internal name, an IP literal in any encoding, and a redirect pivot are all rejected outright, which are the three shapes that appear in real findings. Treat the rebinding window as accepted risk for authenticated or token-gated call sites, not as something this guard closes.
+Between that resolution and the socket your HTTP client opens, the name can be re-resolved to a different address. That is DNS rebinding, and a check that runs before the connection cannot close it. In TypeScript, `guardedLookup` closes it: hand it to the socket layer and the same rules apply to the address actually dialed.
+
+```ts
+import { Agent } from "undici"; // the one place you need it; url-guard stays dependency-free
+import { guardedLookup, safeFetch } from "@mpointer/url-guard";
+
+const dispatcher = new Agent({ connect: { lookup: guardedLookup() } }); // reuse it across requests
+const res = await safeFetch(untrustedUrl, { dispatcher } as RequestInit);
+```
+
+The same function works as the `lookup` option of `http.request`, `https.request` or an `http.Agent`. Pass it the same `allowPrivate` you pass the URL check. An IP-literal host never reaches a `lookup`, so keep the URL check as well: `safeFetch` does both.
+
+In Python the window stays open: neither `requests` nor `httpx` has a public hook for the address it connects to. There, treat rebinding as accepted risk for authenticated or token-gated call sites.
 
 ## safeFetch (TypeScript)
 
@@ -127,7 +139,7 @@ Two production guards, one in each language:
 
 ## What this is not
 
-Not a web application firewall, not a URL reputation service, and not a defense against DNS rebinding (see above). It decides whether a URL names a destination your server should be willing to connect to, and nothing else.
+Not a web application firewall, not a URL reputation service, and in Python not a defense against DNS rebinding (see above). It decides whether a URL names a destination your server should be willing to connect to, and nothing else.
 
 ## License
 
